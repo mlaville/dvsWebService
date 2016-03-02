@@ -3,11 +3,12 @@
  * calcDatesVacances.php
  * 
  * @auteur     marc laville
- * @Copyleft 2014
+ * @Copyleft 2014-2016
  * @date       04/11/2014
  * @version    0.5
  *
- * @date revision 27/07/2015  contournement du bug du au changement de zone (éte 2015)
+ * @date revision 27/07/2015  contournement du bug du au changement de zone (été 2015)
+ * @date revision 03/03/2016  Utilisation DateTime dans listJoursVacances
  *
  * Traitement de la source http://cache.media.education.gouv.fr/ics/Calendrier_Scolaire_Zone_X.ics ( X <- A, B ou C )
  *
@@ -107,17 +108,19 @@ function intersectPlageMois( $item, $unMois ) {
 
 function listJoursVacances( $unMois, $uneZone ) {
 
-	$nomFicBuffer = './buf/plageVacances_' . $uneZone . '.json';
+  date_default_timezone_set('Europe/Paris');
+
+ $nomFicBuffer = './buf/plageVacances_' . $uneZone . '.json';
 	$dateFicJson = null;
 	$ageFicJson = null;
 	
 	if( file_exists($nomFicBuffer) ){
 		$dateFicJson = date( "F d Y H:i:s", filemtime($nomFicBuffer) );
-//		$objDateTimeFic = new DateTime($dateFicJson);
-		$objDateTimeFic = date_create($dateFicJson);
+		$tz = new DateTimeZone('Europe/Paris');
 		
-//		$ageFicJson = $objDateTimeFic->diff( new DateTime('NOW') );
-		$ageFicJson = date_diff ( $objDateTimeFic , date_create( ) );
+		$objDateTimeFic = new DateTime($dateFicJson, $tz);
+		
+		$ageFicJson = $objDateTimeFic->diff( new DateTime('NOW', $tz) );
 	}
 	$nbHeures = is_null($ageFicJson) ? 1 : $ageFicJson->h;
 	
@@ -126,16 +129,12 @@ function listJoursVacances( $unMois, $uneZone ) {
 		$listPlages = listVacances( $nomFic );
 		
 	//	$data = mb_convert_encoding(json_encode( $listPlages ), 'UTF-8', 'OLD-ENCODING');
-	//	file_put_contents( './plageVacances.json', $data, LOCK_EX);
 		file_put_contents( $nomFicBuffer, json_encode( $listPlages ), LOCK_EX );
-//		file_put_contents( $nomFicBuffer, json_encode($listPlages)), LOCK_EX );
 	} else {
 		$listPlages = json_decode( file_get_contents($nomFicBuffer) );
 	}
 
-
 	$listJour = array();
-
 	foreach ($listPlages as &$plage) {
 		$listJour = array_merge($listJour, intersectPlageMois( $plage, $unMois ));
 	}
